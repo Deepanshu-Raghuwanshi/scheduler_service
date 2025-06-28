@@ -1,4 +1,6 @@
-import React, { useState, useEffect } from "react";
+"use client";
+
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { useJobMutations } from "../hooks/useJobs";
 
@@ -17,7 +19,7 @@ const JobForm = ({ job, onClose }) => {
     defaultValues: {
       name: "",
       description: "",
-      cronExpression: "0 0 * * *", // Daily at midnight
+      cronExpression: "0 0 * * *",
       isActive: true,
       jobType: "scheduled",
       payload: "{}",
@@ -31,7 +33,6 @@ const JobForm = ({ job, onClose }) => {
 
   const { createJob, updateJob } = useJobMutations();
 
-  // Pre-fill form when editing
   useEffect(() => {
     if (job) {
       setValue("name", job.name || "");
@@ -50,9 +51,7 @@ const JobForm = ({ job, onClose }) => {
 
   const onSubmit = async (data) => {
     setIsSubmitting(true);
-
     try {
-      // Parse payload JSON
       let payload = {};
       if (data.payload.trim()) {
         try {
@@ -62,7 +61,6 @@ const JobForm = ({ job, onClose }) => {
         }
       }
 
-      // Parse tags
       const tags = data.tags
         .split(",")
         .map((tag) => tag.trim())
@@ -75,9 +73,9 @@ const JobForm = ({ job, onClose }) => {
         isActive: data.isActive,
         jobType: data.jobType,
         payload,
-        timeoutMs: parseInt(data.timeoutMs),
-        maxRetries: parseInt(data.maxRetries),
-        retryDelayMs: parseInt(data.retryDelayMs),
+        timeoutMs: Number.parseInt(data.timeoutMs),
+        maxRetries: Number.parseInt(data.maxRetries),
+        retryDelayMs: Number.parseInt(data.retryDelayMs),
         createdBy: data.createdBy,
         tags: tags.length > 0 ? tags : undefined,
       };
@@ -91,7 +89,6 @@ const JobForm = ({ job, onClose }) => {
       onClose();
     } catch (error) {
       console.error("Form submission error:", error);
-      // Error will be handled by the mutation hooks
     } finally {
       setIsSubmitting(false);
     }
@@ -103,8 +100,8 @@ const JobForm = ({ job, onClose }) => {
     { label: "Every hour", value: "0 * * * *" },
     { label: "Daily at midnight", value: "0 0 * * *" },
     { label: "Daily at 9 AM", value: "0 9 * * *" },
-    { label: "Weekly (Sunday midnight)", value: "0 0 * * 0" },
-    { label: "Monthly (1st at midnight)", value: "0 0 1 * *" },
+    { label: "Weekly (Sunday)", value: "0 0 * * 0" },
+    { label: "Monthly (1st)", value: "0 0 1 * *" },
   ];
 
   const jobTypes = [
@@ -115,17 +112,24 @@ const JobForm = ({ job, onClose }) => {
   ];
 
   return (
-    <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-      <div className="relative top-20 mx-auto p-5 border w-11/12 max-w-4xl shadow-lg rounded-md bg-white">
-        <div className="mt-3">
-          {/* Header */}
-          <div className="flex items-center justify-between mb-6">
-            <h3 className="text-lg font-medium text-gray-900">
-              {isEditing ? "Edit Job" : "Create New Job"}
-            </h3>
+    <div className="fixed inset-0 bg-black bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center p-4">
+      <div className="relative bg-white rounded-xl shadow-2xl w-full max-w-5xl max-h-[90vh] overflow-y-auto">
+        {/* Header */}
+        <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 rounded-t-xl">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-xl font-semibold text-gray-900">
+                {isEditing ? "Edit Job" : "Create New Job"}
+              </h3>
+              <p className="text-sm text-gray-600 mt-1">
+                {isEditing
+                  ? "Update job configuration and settings"
+                  : "Configure your new scheduled job"}
+              </p>
+            </div>
             <button
               onClick={onClose}
-              className="text-gray-400 hover:text-gray-600"
+              className="text-gray-400 hover:text-gray-600 transition-colors p-2 hover:bg-gray-100 rounded-lg"
             >
               <svg
                 className="w-6 h-6"
@@ -142,293 +146,334 @@ const JobForm = ({ job, onClose }) => {
               </svg>
             </button>
           </div>
+        </div>
 
-          {/* Form */}
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Basic Information */}
-              <div className="space-y-4">
-                <h4 className="text-md font-medium text-gray-900 border-b pb-2">
+        {/* Form */}
+        <form onSubmit={handleSubmit(onSubmit)} className="p-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {/* Basic Information */}
+            <div className="space-y-6">
+              <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
+                <h4 className="text-lg font-medium text-blue-900 mb-4 flex items-center">
+                  <svg
+                    className="w-5 h-5 mr-2"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
+                  </svg>
                   Basic Information
                 </h4>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Job Name *
-                  </label>
-                  <input
-                    type="text"
-                    {...register("name", {
-                      required: "Job name is required",
-                      maxLength: {
-                        value: 255,
-                        message: "Name must be less than 255 characters",
-                      },
-                    })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="Enter job name"
-                  />
-                  {errors.name && (
-                    <p className="mt-1 text-sm text-red-600">
-                      {errors.name.message}
-                    </p>
-                  )}
-                </div>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Job Name <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      {...register("name", {
+                        required: "Job name is required",
+                        maxLength: {
+                          value: 255,
+                          message: "Name must be less than 255 characters",
+                        },
+                      })}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                      placeholder="Enter a descriptive job name"
+                    />
+                    {errors.name && (
+                      <p className="mt-1 text-sm text-red-600">
+                        {errors.name.message}
+                      </p>
+                    )}
+                  </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Description
-                  </label>
-                  <textarea
-                    {...register("description", {
-                      maxLength: {
-                        value: 1000,
-                        message:
-                          "Description must be less than 1000 characters",
-                      },
-                    })}
-                    rows={3}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="Enter job description"
-                  />
-                  {errors.description && (
-                    <p className="mt-1 text-sm text-red-600">
-                      {errors.description.message}
-                    </p>
-                  )}
-                </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Description
+                    </label>
+                    <textarea
+                      {...register("description", {
+                        maxLength: {
+                          value: 1000,
+                          message:
+                            "Description must be less than 1000 characters",
+                        },
+                      })}
+                      rows={4}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                      placeholder="Describe what this job does..."
+                    />
+                    {errors.description && (
+                      <p className="mt-1 text-sm text-red-600">
+                        {errors.description.message}
+                      </p>
+                    )}
+                  </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Job Type
-                  </label>
-                  <select
-                    {...register("jobType")}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                  >
-                    {jobTypes.map((type) => (
-                      <option key={type.value} value={type.value}>
-                        {type.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Job Type
+                    </label>
+                    <select
+                      {...register("jobType")}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                    >
+                      {jobTypes.map((type) => (
+                        <option key={type.value} value={type.value}>
+                          {type.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
 
-                <div>
-                  <label className="flex items-center">
+                  <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
                     <input
                       type="checkbox"
                       {...register("isActive")}
-                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                     />
-                    <span className="ml-2 text-sm text-gray-700">
-                      Job is active
-                    </span>
-                  </label>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Created By
-                  </label>
-                  <input
-                    type="text"
-                    {...register("createdBy", {
-                      maxLength: {
-                        value: 255,
-                        message:
-                          "Creator name must be less than 255 characters",
-                      },
-                    })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="Enter creator name"
-                  />
-                  {errors.createdBy && (
-                    <p className="mt-1 text-sm text-red-600">
-                      {errors.createdBy.message}
-                    </p>
-                  )}
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Tags
-                  </label>
-                  <input
-                    type="text"
-                    {...register("tags")}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="tag1, tag2, tag3"
-                  />
-                  <p className="mt-1 text-xs text-gray-500">
-                    Separate multiple tags with commas
-                  </p>
-                </div>
-              </div>
-
-              {/* Schedule & Configuration */}
-              <div className="space-y-4">
-                <h4 className="text-md font-medium text-gray-900 border-b pb-2">
-                  Schedule & Configuration
-                </h4>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Cron Expression *
-                  </label>
-                  <input
-                    type="text"
-                    {...register("cronExpression", {
-                      required: "Cron expression is required",
-                      pattern: {
-                        value:
-                          /^(\*|[0-5]?[0-9]|\*\/[0-9]+) (\*|[01]?[0-9]|2[0-3]|\*\/[0-9]+) (\*|[12]?[0-9]|3[01]|\*\/[0-9]+) (\*|[01]?[0-9]|1[0-2]|\*\/[0-9]+) (\*|[0-6]|\*\/[0-9]+)$/,
-                        message: "Invalid cron expression format",
-                      },
-                    })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 font-mono"
-                    placeholder="0 0 * * *"
-                  />
-                  {errors.cronExpression && (
-                    <p className="mt-1 text-sm text-red-600">
-                      {errors.cronExpression.message}
-                    </p>
-                  )}
-
-                  {/* Cron Presets */}
-                  <div className="mt-2">
-                    <p className="text-xs text-gray-500 mb-2">Quick presets:</p>
-                    <div className="flex flex-wrap gap-1">
-                      {cronPresets.map((preset, index) => (
-                        <button
-                          key={index}
-                          type="button"
-                          onClick={() =>
-                            setValue("cronExpression", preset.value)
-                          }
-                          className="px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded border"
-                        >
-                          {preset.label}
-                        </button>
-                      ))}
-                    </div>
+                    <label className="text-sm font-medium text-gray-700">
+                      Job is active and ready to run
+                    </label>
                   </div>
-                </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Timeout (milliseconds)
-                  </label>
-                  <input
-                    type="number"
-                    {...register("timeoutMs", {
-                      min: {
-                        value: 1000,
-                        message: "Minimum timeout is 1000ms",
-                      },
-                      max: {
-                        value: 300000,
-                        message: "Maximum timeout is 300000ms",
-                      },
-                    })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                  />
-                  {errors.timeoutMs && (
-                    <p className="mt-1 text-sm text-red-600">
-                      {errors.timeoutMs.message}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Created By
+                    </label>
+                    <input
+                      type="text"
+                      {...register("createdBy", {
+                        maxLength: {
+                          value: 255,
+                          message:
+                            "Creator name must be less than 255 characters",
+                        },
+                      })}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                      placeholder="Enter creator name"
+                    />
+                    {errors.createdBy && (
+                      <p className="mt-1 text-sm text-red-600">
+                        {errors.createdBy.message}
+                      </p>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Tags
+                    </label>
+                    <input
+                      type="text"
+                      {...register("tags")}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                      placeholder="production, daily, backup"
+                    />
+                    <p className="mt-1 text-xs text-gray-500">
+                      Separate multiple tags with commas
                     </p>
-                  )}
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Max Retries
-                  </label>
-                  <input
-                    type="number"
-                    {...register("maxRetries", {
-                      min: { value: 0, message: "Minimum retries is 0" },
-                      max: { value: 10, message: "Maximum retries is 10" },
-                    })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                  />
-                  {errors.maxRetries && (
-                    <p className="mt-1 text-sm text-red-600">
-                      {errors.maxRetries.message}
-                    </p>
-                  )}
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Retry Delay (milliseconds)
-                  </label>
-                  <input
-                    type="number"
-                    {...register("retryDelayMs", {
-                      min: {
-                        value: 1000,
-                        message: "Minimum retry delay is 1000ms",
-                      },
-                      max: {
-                        value: 60000,
-                        message: "Maximum retry delay is 60000ms",
-                      },
-                    })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                  />
-                  {errors.retryDelayMs && (
-                    <p className="mt-1 text-sm text-red-600">
-                      {errors.retryDelayMs.message}
-                    </p>
-                  )}
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Job Payload (JSON)
-                  </label>
-                  <textarea
-                    {...register("payload")}
-                    rows={6}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 font-mono text-sm"
-                    placeholder='{"key": "value"}'
-                  />
-                  <p className="mt-1 text-xs text-gray-500">
-                    Enter valid JSON for job configuration
-                  </p>
+                  </div>
                 </div>
               </div>
             </div>
 
-            {/* Form Actions */}
-            <div className="flex items-center justify-end space-x-3 pt-6 border-t">
+            {/* Schedule & Configuration */}
+            <div className="space-y-6">
+              <div className="bg-green-50 rounded-lg p-4 border border-green-200">
+                <h4 className="text-lg font-medium text-green-900 mb-4 flex items-center">
+                  <svg
+                    className="w-5 h-5 mr-2"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
+                  </svg>
+                  Schedule & Configuration
+                </h4>
+
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Cron Expression <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      {...register("cronExpression", {
+                        required: "Cron expression is required",
+                        pattern: {
+                          value:
+                            /^(\*|[0-5]?[0-9]|\*\/[0-9]+) (\*|[01]?[0-9]|2[0-3]|\*\/[0-9]+) (\*|[12]?[0-9]|3[01]|\*\/[0-9]+) (\*|[01]?[0-9]|1[0-2]|\*\/[0-9]+) (\*|[0-6]|\*\/[0-9]+)$/,
+                          message: "Invalid cron expression format",
+                        },
+                      })}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono transition-colors"
+                      placeholder="0 0 * * *"
+                    />
+                    {errors.cronExpression && (
+                      <p className="mt-1 text-sm text-red-600">
+                        {errors.cronExpression.message}
+                      </p>
+                    )}
+
+                    {/* Cron Presets */}
+                    <div className="mt-3">
+                      <p className="text-xs text-gray-600 mb-2">
+                        Quick presets:
+                      </p>
+                      <div className="grid grid-cols-2 gap-2">
+                        {cronPresets.map((preset, index) => (
+                          <button
+                            key={index}
+                            type="button"
+                            onClick={() =>
+                              setValue("cronExpression", preset.value)
+                            }
+                            className="px-3 py-2 text-xs bg-white hover:bg-blue-50 border border-gray-200 hover:border-blue-300 rounded-lg transition-colors text-left"
+                          >
+                            <div className="font-medium text-gray-900">
+                              {preset.label}
+                            </div>
+                            <div className="font-mono text-gray-500">
+                              {preset.value}
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Timeout (ms)
+                      </label>
+                      <input
+                        type="number"
+                        {...register("timeoutMs", {
+                          min: {
+                            value: 1000,
+                            message: "Minimum timeout is 1000ms",
+                          },
+                          max: {
+                            value: 300000,
+                            message: "Maximum timeout is 300000ms",
+                          },
+                        })}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                      />
+                      {errors.timeoutMs && (
+                        <p className="mt-1 text-sm text-red-600">
+                          {errors.timeoutMs.message}
+                        </p>
+                      )}
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Max Retries
+                      </label>
+                      <input
+                        type="number"
+                        {...register("maxRetries", {
+                          min: { value: 0, message: "Minimum retries is 0" },
+                          max: { value: 10, message: "Maximum retries is 10" },
+                        })}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                      />
+                      {errors.maxRetries && (
+                        <p className="mt-1 text-sm text-red-600">
+                          {errors.maxRetries.message}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Retry Delay (ms)
+                    </label>
+                    <input
+                      type="number"
+                      {...register("retryDelayMs", {
+                        min: {
+                          value: 1000,
+                          message: "Minimum retry delay is 1000ms",
+                        },
+                        max: {
+                          value: 60000,
+                          message: "Maximum retry delay is 60000ms",
+                        },
+                      })}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                    />
+                    {errors.retryDelayMs && (
+                      <p className="mt-1 text-sm text-red-600">
+                        {errors.retryDelayMs.message}
+                      </p>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Job Payload (JSON)
+                    </label>
+                    <textarea
+                      {...register("payload")}
+                      rows={8}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono text-sm transition-colors"
+                      placeholder='{"key": "value", "config": {"enabled": true}}'
+                    />
+                    <p className="mt-1 text-xs text-gray-500">
+                      Enter valid JSON for job configuration and parameters
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Form Actions */}
+          <div className="sticky bottom-0 bg-white border-t border-gray-200 px-6 py-4 mt-8 -mx-6 -mb-6 rounded-b-xl">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-end space-y-3 sm:space-y-0 sm:space-x-3">
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+                className="w-full sm:w-auto px-6 py-3 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 transition-colors"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full sm:w-auto px-6 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center space-x-2"
               >
                 {isSubmitting ? (
-                  <div className="flex items-center">
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                    {isEditing ? "Updating..." : "Creating..."}
-                  </div>
-                ) : isEditing ? (
-                  "Update Job"
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    <span>{isEditing ? "Updating..." : "Creating..."}</span>
+                  </>
                 ) : (
-                  "Create Job"
+                  <span>{isEditing ? "Update Job" : "Create Job"}</span>
                 )}
               </button>
             </div>
-          </form>
-        </div>
+          </div>
+        </form>
       </div>
     </div>
   );
