@@ -159,8 +159,8 @@ class SchedulerService {
    * @param {Job} job - Job to execute
    */
   async executeJob(job) {
-    const executionId = `${job.id}_${Date.now()}`;
     const startTime = Date.now();
+    let executionId = null;
 
     // Check if job is already running
     if (this.executionQueue.has(job.id)) {
@@ -172,7 +172,6 @@ class SchedulerService {
 
     // Record execution start
     const execution = {
-      id: executionId,
       jobId: job.id,
       startTime,
       status: "running",
@@ -181,8 +180,9 @@ class SchedulerService {
     this.executionQueue.set(job.id, execution);
 
     try {
-      // Create execution record in database
-      await this.createExecutionRecord(job.id, "running");
+      // Create execution record in database and get the UUID
+      executionId = await this.createExecutionRecord(job.id, "running");
+      execution.id = executionId;
 
       // Simulate job execution based on job type
       const result = await this.performJobExecution(job);
@@ -212,13 +212,15 @@ class SchedulerService {
 
       console.error(`Job failed: ${job.name} - ${error.message}`);
 
-      // Update execution record
-      await this.updateExecutionRecord(
-        executionId,
-        "failed",
-        duration,
-        error.message
-      );
+      // Update execution record only if we have a valid execution ID
+      if (executionId) {
+        await this.updateExecutionRecord(
+          executionId,
+          "failed",
+          duration,
+          error.message
+        );
+      }
 
       // Update job statistics
       await this.jobRepository.updateJobStats(job.id, { success: false });
