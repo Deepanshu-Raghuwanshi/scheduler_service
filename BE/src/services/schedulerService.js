@@ -3,6 +3,66 @@ const { JobRepository } = require("../models/Job");
 const { getDatabase } = require("../database/connection");
 
 /**
+ * Calculate next run time for cron expression in IST timezone
+ * @param {string} cronExpression - Cron expression
+ * @param {Date} fromTime - Base time (defaults to now)
+ * @returns {Date} - Next run time in UTC
+ */
+function calculateNextRunTime(cronExpression, fromTime = new Date()) {
+  // Get current time in IST by adding IST offset to UTC
+  const istOffset = 5.5 * 60 * 60 * 1000; // IST is UTC+5:30
+  const istTime = new Date(fromTime.getTime() + istOffset);
+
+  let nextRun;
+
+  switch (cronExpression) {
+    case "0 * * * *": // Every hour
+      nextRun = new Date(istTime);
+      nextRun.setMinutes(0, 0, 0);
+      nextRun.setHours(nextRun.getHours() + 1);
+      break;
+
+    case "0 0 * * *": // Daily at midnight IST
+      nextRun = new Date(istTime);
+      nextRun.setHours(0, 0, 0, 0);
+      nextRun.setDate(nextRun.getDate() + 1);
+      break;
+
+    case "0 9 * * *": // Daily at 9 AM IST
+      nextRun = new Date(istTime);
+      nextRun.setHours(9, 0, 0, 0);
+      // If current time is already past 9 AM today, schedule for tomorrow
+      if (istTime >= nextRun) {
+        nextRun.setDate(nextRun.getDate() + 1);
+      }
+      break;
+
+    case "0 0 * * 1": // Weekly on Monday
+      nextRun = new Date(istTime);
+      nextRun.setHours(0, 0, 0, 0);
+      const daysUntilMonday = (1 - nextRun.getDay() + 7) % 7;
+      nextRun.setDate(nextRun.getDate() + (daysUntilMonday || 7));
+      break;
+
+    case "0 0 1 * *": // Monthly on 1st
+      nextRun = new Date(istTime);
+      nextRun.setHours(0, 0, 0, 0);
+      nextRun.setDate(1);
+      nextRun.setMonth(nextRun.getMonth() + 1);
+      break;
+
+    default:
+      // Default to 1 hour for unknown patterns
+      nextRun = new Date(istTime);
+      nextRun.setHours(nextRun.getHours() + 1);
+  }
+
+  // Convert IST time back to UTC for storage
+  // Since nextRun is in IST, subtract the IST offset to get UTC
+  return new Date(nextRun.getTime() - istOffset);
+}
+
+/**
  * Job Scheduler Service - Handles job scheduling and execution
  * Follows Single Responsibility Principle and Dependency Injection
  */
@@ -201,6 +261,9 @@ class SchedulerService {
 
       // Update job statistics
       await this.jobRepository.updateJobStats(job.id, { success: true });
+
+      // Update next run time
+      await this.updateNextRunTime(job);
 
       // Update service statistics
       this.updateServiceStats(duration, true);
@@ -444,6 +507,30 @@ class SchedulerService {
             ).toFixed(2)
           : 0,
     };
+  }
+
+  /**
+   * Update next run time for a job after execution
+   * @param {Job} job - Job to update
+   */
+  async updateNextRunTime(job) {
+    try {
+      const nextRunAt = calculateNextRunTime(job.cronExpression);
+
+      const query = `
+        UPDATE jobs SET 
+          next_run_at = $2,
+          updated_at = NOW()
+        WHERE id = $1
+      `;
+
+      await this.db.query(query, [job.id, nextRunAt]);
+      console.log(
+        `Updated next run time for job ${job.id}: ${nextRunAt.toISOString()}`
+      );
+    } catch (error) {
+      console.error(`Failed to update next run time for job ${job.id}:`, error);
+    }
   }
 
   /**

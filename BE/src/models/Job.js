@@ -1,4 +1,65 @@
 const { getDatabase } = require("../database/connection");
+const cron = require("node-cron");
+
+/**
+ * Calculate next run time for cron expression in IST timezone
+ * @param {string} cronExpression - Cron expression
+ * @param {Date} fromTime - Base time (defaults to now)
+ * @returns {Date} - Next run time in UTC
+ */
+function calculateNextRunTime(cronExpression, fromTime = new Date()) {
+  // Get current time in IST by adding IST offset to UTC
+  const istOffset = 5.5 * 60 * 60 * 1000; // IST is UTC+5:30
+  const istTime = new Date(fromTime.getTime() + istOffset);
+
+  let nextRun;
+
+  switch (cronExpression) {
+    case "0 * * * *": // Every hour
+      nextRun = new Date(istTime);
+      nextRun.setMinutes(0, 0, 0);
+      nextRun.setHours(nextRun.getHours() + 1);
+      break;
+
+    case "0 0 * * *": // Daily at midnight IST
+      nextRun = new Date(istTime);
+      nextRun.setHours(0, 0, 0, 0);
+      nextRun.setDate(nextRun.getDate() + 1);
+      break;
+
+    case "0 9 * * *": // Daily at 9 AM IST
+      nextRun = new Date(istTime);
+      nextRun.setHours(9, 0, 0, 0);
+      // If current time is already past 9 AM today, schedule for tomorrow
+      if (istTime >= nextRun) {
+        nextRun.setDate(nextRun.getDate() + 1);
+      }
+      break;
+
+    case "0 0 * * 1": // Weekly on Monday
+      nextRun = new Date(istTime);
+      nextRun.setHours(0, 0, 0, 0);
+      const daysUntilMonday = (1 - nextRun.getDay() + 7) % 7;
+      nextRun.setDate(nextRun.getDate() + (daysUntilMonday || 7));
+      break;
+
+    case "0 0 1 * *": // Monthly on 1st
+      nextRun = new Date(istTime);
+      nextRun.setHours(0, 0, 0, 0);
+      nextRun.setDate(1);
+      nextRun.setMonth(nextRun.getMonth() + 1);
+      break;
+
+    default:
+      // Default to 1 hour for unknown patterns
+      nextRun = new Date(istTime);
+      nextRun.setHours(nextRun.getHours() + 1);
+  }
+
+  // Convert IST time back to UTC for storage
+  // Since nextRun is in IST, subtract the IST offset to get UTC
+  return new Date(nextRun.getTime() - istOffset);
+}
 
 class Job {
   constructor(data = {}) {
@@ -189,12 +250,15 @@ class JobRepository {
 
     const dbData = job.toDatabase();
 
+    // Calculate next run time in IST
+    const nextRunAt = calculateNextRunTime(job.cronExpression);
+
     const query = `
       INSERT INTO jobs (
         name, description, cron_expression, is_active, job_type,
-        payload, timeout_ms, max_retries, retry_delay_ms, created_by, tags
+        payload, timeout_ms, max_retries, retry_delay_ms, created_by, tags, next_run_at
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
       RETURNING *
     `;
 
@@ -210,6 +274,7 @@ class JobRepository {
       dbData.retry_delay_ms,
       dbData.created_by,
       dbData.tags,
+      nextRunAt,
     ];
 
     const result = await this.db.query(query, values);
@@ -232,6 +297,12 @@ class JobRepository {
 
     const dbData = updatedJob.toDatabase();
 
+    // Recalculate next run time if cron expression changed
+    let nextRunAt = existingJob.nextRunAt;
+    if (existingJob.cronExpression !== updatedJob.cronExpression) {
+      nextRunAt = calculateNextRunTime(updatedJob.cronExpression);
+    }
+
     const query = `
       UPDATE jobs SET
         name = $2,
@@ -245,6 +316,7 @@ class JobRepository {
         retry_delay_ms = $10,
         created_by = $11,
         tags = $12,
+        next_run_at = $13,
         updated_at = NOW()
       WHERE id = $1
       RETURNING *
@@ -263,6 +335,7 @@ class JobRepository {
       dbData.retry_delay_ms,
       dbData.created_by,
       dbData.tags,
+      nextRunAt,
     ];
 
     const result = await this.db.query(query, values);

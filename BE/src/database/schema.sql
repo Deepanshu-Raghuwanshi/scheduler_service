@@ -80,25 +80,37 @@ CREATE INDEX IF NOT EXISTS idx_job_executions_started_at ON job_executions (star
 CREATE OR REPLACE FUNCTION calculate_next_run(cron_expr TEXT, from_time TIMESTAMPTZ DEFAULT NOW())
 RETURNS TIMESTAMPTZ AS $$
 DECLARE
-    next_run TIMESTAMPTZ;
+    next_run TIMESTAMP;
+    ist_time TIMESTAMP;
 BEGIN
+    -- Convert current time to IST for calculation
+    ist_time := from_time AT TIME ZONE 'Asia/Kolkata';
+    
     -- This is a simplified version. In production, you'd use a proper cron library
     -- For now, we'll handle basic cases
     CASE 
         WHEN cron_expr = '0 * * * *' THEN -- Every hour
-            next_run := DATE_TRUNC('hour', from_time) + INTERVAL '1 hour';
-        WHEN cron_expr = '0 0 * * *' THEN -- Daily at midnight
-            next_run := DATE_TRUNC('day', from_time) + INTERVAL '1 day';
+            next_run := DATE_TRUNC('hour', ist_time) + INTERVAL '1 hour';
+        WHEN cron_expr = '0 0 * * *' THEN -- Daily at midnight IST
+            next_run := DATE_TRUNC('day', ist_time) + INTERVAL '1 day';
+        WHEN cron_expr = '0 9 * * *' THEN -- Daily at 9 AM IST
+            next_run := DATE_TRUNC('day', ist_time) + INTERVAL '9 hours';
+            -- If current time is already past 9 AM today, schedule for tomorrow
+            IF ist_time >= next_run THEN
+                next_run := next_run + INTERVAL '1 day';
+            END IF;
         WHEN cron_expr = '0 0 * * 1' THEN -- Weekly on Monday
-            next_run := DATE_TRUNC('week', from_time) + INTERVAL '1 week';
+            next_run := DATE_TRUNC('week', ist_time) + INTERVAL '1 week';
         WHEN cron_expr = '0 0 1 * *' THEN -- Monthly on 1st
-            next_run := DATE_TRUNC('month', from_time) + INTERVAL '1 month';
+            next_run := DATE_TRUNC('month', ist_time) + INTERVAL '1 month';
         ELSE
             -- Default to 1 hour for unknown patterns
-            next_run := from_time + INTERVAL '1 hour';
+            next_run := ist_time + INTERVAL '1 hour';
     END CASE;
     
-    RETURN next_run;
+    -- Convert IST time back to UTC for storage
+    -- next_run is in IST (without timezone), so we specify it's in Asia/Kolkata timezone
+    RETURN next_run AT TIME ZONE 'Asia/Kolkata' AT TIME ZONE 'UTC';
 END;
 $$ LANGUAGE plpgsql;
 
