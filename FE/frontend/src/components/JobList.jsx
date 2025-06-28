@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useJobs, useJobMutations } from "../hooks/useJobs";
 import JobForm from "./JobForm";
-import { format } from "date-fns";
+import { format, parseISO } from "date-fns";
 
 const JobList = () => {
   const [filters, setFilters] = useState({
@@ -106,6 +106,54 @@ const JobList = () => {
         {jobType}
       </span>
     );
+  };
+
+  const formatDateTime = (dateString) => {
+    if (!dateString) return null;
+
+    try {
+      // Parse the date string (it's in UTC format with Z suffix)
+      const date = new Date(dateString);
+
+      // Check if the date is valid
+      if (isNaN(date.getTime())) {
+        return "Invalid date";
+      }
+
+      // Convert to IST using Intl.DateTimeFormat for better reliability
+      const formatter = new Intl.DateTimeFormat("en-US", {
+        timeZone: "Asia/Kolkata",
+        month: "short",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false,
+      });
+
+      const parts = formatter.formatToParts(date);
+      const month = parts.find((part) => part.type === "month")?.value;
+      const day = parts.find((part) => part.type === "day")?.value;
+      const hour = parts.find((part) => part.type === "hour")?.value;
+      const minute = parts.find((part) => part.type === "minute")?.value;
+
+      return `${month} ${day}, ${hour}:${minute}`;
+    } catch (error) {
+      console.error("Date formatting error:", error);
+      // Fallback to simple conversion
+      try {
+        const date = new Date(dateString);
+        return date.toLocaleString("en-US", {
+          timeZone: "Asia/Kolkata",
+          month: "short",
+          day: "2-digit",
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: false,
+        });
+      } catch (fallbackError) {
+        return "Invalid date";
+      }
+    }
   };
 
   if (isLoading) {
@@ -313,12 +361,12 @@ const JobList = () => {
                   </div>
                   {job.nextRunAt && (
                     <div className="text-sm text-gray-500">
-                      Next: {format(new Date(job.nextRunAt), "MMM dd, HH:mm")}
+                      Next: {formatDateTime(job.nextRunAt)}
                     </div>
                   )}
                   {job.lastRunAt && (
                     <div className="text-sm text-gray-500">
-                      Last: {format(new Date(job.lastRunAt), "MMM dd, HH:mm")}
+                      Last: {formatDateTime(job.lastRunAt)}
                     </div>
                   )}
                 </td>
