@@ -1,12 +1,65 @@
-# React + Vite
+# Job Scheduler Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+React + Vite frontend application for the Job Scheduler Service.
 
-Currently, two official plugins are available:
+## 🚀 Quick Start
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+### 1. Clone the Repository
 
-## Expanding the ESLint configuration
+```bash
+git clone https://github.com/Deepanshu-Raghuwanshi/scheduler_service.git
+cd scheduler_service/FE/frontend
+```
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+### 2. Install Dependencies
+
+```bash
+npm install
+```
+
+### 3. Environment Setup
+
+Copy the environment example file and configure it:
+
+```bash
+cp .env.example .env
+```
+
+Update the `.env` file with your API configuration:
+
+```env
+VITE_API_BASE_URL=http://localhost:3000/api
+VITE_NODE_ENV=development
+VITE_ENABLE_DEV_TOOLS=true
+VITE_ENABLE_REACT_QUERY_DEVTOOLS=true
+```
+
+### 4. Start Development Server
+
+```bash
+npm run dev
+```
+
+The application will be available at `http://localhost:5173`
+
+## 🛠️ Available Scripts
+
+- `npm run dev` - Start development server
+- `npm run build` - Build for production
+- `npm run preview` - Preview production build
+- `npm run lint` - Run ESLint
+
+## 🏗️ Tech Stack
+
+- **React 18** - UI library
+- **Vite** - Build tool and dev server
+- **Tailwind CSS** - Utility-first CSS framework
+- **React Query** - Server state management
+- **React Router DOM** - Client-side routing
+- **React Hook Form** - Form handling
+- **Axios** - HTTP client
+- **React Toastify** - Notifications
+
+## 📚 Documentation
+
+For detailed documentation, see the main [FE README](../README.md) file.

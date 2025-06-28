@@ -247,15 +247,28 @@ const JobForm = ({ job, onClose }) => {
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Created By
+                      Created By <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="text"
                       {...register("createdBy", {
+                        required: {
+                          value: true,
+                          message: "Created by field is required",
+                        },
+                        minLength: {
+                          value: 1,
+                          message: "Created by field cannot be empty",
+                        },
                         maxLength: {
                           value: 255,
                           message:
                             "Creator name must be less than 255 characters",
+                        },
+                        validate: {
+                          notEmpty: (value) =>
+                            value.trim().length > 0 ||
+                            "Created by field cannot be empty or just whitespace",
                         },
                       })}
                       className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
