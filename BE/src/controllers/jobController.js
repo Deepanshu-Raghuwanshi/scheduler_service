@@ -27,23 +27,43 @@ class JobController {
         search: req.query.search,
       };
 
-      // Create cache key based on query parameters
+      // Check if client wants to bypass cache for fresh data
+      const bypassCache = req.query.fresh === "true";
+
+      // Create cache key based on query parameters (excluding fresh parameter)
       const cacheKey = `jobs:${JSON.stringify(options)}`;
 
-      // Try to get from cache first
-      let result = this.cache.get(cacheKey);
+      // Try to get from cache first (unless bypassing cache)
+      let result = bypassCache ? null : this.cache.get(cacheKey);
 
       if (!result) {
         result = await this.jobRepository.findAll(options);
 
-        // Cache for 5 minutes
-        this.cache.set(cacheKey, result, 5 * 60 * 1000);
+        // Cache for 2 minutes (reduced from 5 minutes for more frequent updates)
+        this.cache.set(cacheKey, result, 2 * 60 * 1000);
       }
+
+      // Always fetch fresh execution times for active jobs to avoid stale data
+      const jobsWithFreshTimes = await Promise.all(
+        result.jobs.map(async (job) => {
+          if (job.isActive) {
+            // Get fresh execution times from database
+            const freshJob = await this.jobRepository.findById(job.id);
+            if (freshJob) {
+              // Update the cached job with fresh execution times
+              job.lastRunAt = freshJob.lastRunAt;
+              job.nextRunAt = freshJob.nextRunAt;
+              job.statistics = freshJob.statistics;
+            }
+          }
+          return job.toJSON();
+        })
+      );
 
       res.json({
         success: true,
         data: {
-          jobs: result.jobs.map((job) => job.toJSON()),
+          jobs: jobsWithFreshTimes,
           pagination: {
             page: result.page,
             limit: result.limit,

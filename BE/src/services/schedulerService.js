@@ -1,6 +1,7 @@
 const cron = require("node-cron");
 const { JobRepository } = require("../models/Job");
 const { getDatabase } = require("../database/connection");
+const { getCache } = require("./cacheService");
 
 /**
  * Calculate next run time for cron expression in IST timezone
@@ -87,6 +88,7 @@ class SchedulerService {
   constructor() {
     this.jobRepository = new JobRepository();
     this.db = getDatabase();
+    this.cache = getCache();
     this.activeTasks = new Map(); // Store active cron tasks
     this.executionQueue = new Map(); // Track running executions
     this.isRunning = false;
@@ -282,6 +284,9 @@ class SchedulerService {
       // Update next run time
       await this.updateNextRunTime(job);
 
+      // Invalidate cache to ensure fresh data is returned
+      this.invalidateJobsCache();
+
       // Update service statistics
       this.updateServiceStats(duration, true);
 
@@ -304,6 +309,9 @@ class SchedulerService {
 
       // Update job statistics
       await this.jobRepository.updateJobStats(job.id, { success: false });
+
+      // Invalidate cache to ensure fresh data is returned
+      this.invalidateJobsCache();
 
       // Update service statistics
       this.updateServiceStats(duration, false);
@@ -555,6 +563,24 @@ class SchedulerService {
    */
   getScheduledJobs() {
     return Array.from(this.activeTasks.keys());
+  }
+
+  /**
+   * Invalidate jobs cache to ensure fresh data is returned
+   */
+  invalidateJobsCache() {
+    try {
+      // Remove all jobs list cache entries
+      const keys = this.cache.keys();
+      keys.forEach((key) => {
+        if (key.startsWith("jobs:")) {
+          this.cache.delete(key);
+        }
+      });
+      console.log("Jobs cache invalidated");
+    } catch (error) {
+      console.error("Error invalidating jobs cache:", error);
+    }
   }
 }
 
