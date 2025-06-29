@@ -9,57 +9,74 @@ const { getDatabase } = require("../database/connection");
  * @returns {Date} - Next run time in UTC
  */
 function calculateNextRunTime(cronExpression, fromTime = new Date()) {
-  // Get current time in IST by adding IST offset to UTC
-  const istOffset = 5.5 * 60 * 60 * 1000; // IST is UTC+5:30
-  const istTime = new Date(fromTime.getTime() + istOffset);
+  try {
+    // Validate the cron expression first
+    if (!cron.validate(cronExpression)) {
+      throw new Error(`Invalid cron expression: ${cronExpression}`);
+    }
 
-  let nextRun;
+    // Convert current time to IST
+    const istOffset = 5.5 * 60 * 60 * 1000; // IST is UTC+5:30
+    const istTime = new Date(fromTime.getTime() + istOffset);
 
-  switch (cronExpression) {
-    case "0 * * * *": // Every hour
-      nextRun = new Date(istTime);
-      nextRun.setMinutes(0, 0, 0);
-      nextRun.setHours(nextRun.getHours() + 1);
-      break;
+    // Parse cron expression parts
+    const parts = cronExpression.split(" ");
+    const [minute, hour, day, month, dayOfWeek] = parts;
 
-    case "0 0 * * *": // Daily at midnight IST
-      nextRun = new Date(istTime);
-      nextRun.setHours(0, 0, 0, 0);
-      nextRun.setDate(nextRun.getDate() + 1);
-      break;
+    let nextRun = new Date(istTime);
 
-    case "0 9 * * *": // Daily at 9 AM IST
-      nextRun = new Date(istTime);
-      nextRun.setHours(9, 0, 0, 0);
-      // If current time is already past 9 AM today, schedule for tomorrow
+    // Handle common patterns
+    if (cronExpression === "* * * * *") {
+      // Every minute
+      nextRun.setSeconds(0, 0);
+      nextRun.setMinutes(nextRun.getMinutes() + 1);
+    } else if (minute.startsWith("*/")) {
+      // Every N minutes
+      const interval = parseInt(minute.substring(2));
+      nextRun.setSeconds(0, 0);
+      const currentMinute = nextRun.getMinutes();
+      const nextInterval = Math.ceil((currentMinute + 1) / interval) * interval;
+      if (nextInterval >= 60) {
+        nextRun.setHours(nextRun.getHours() + 1);
+        nextRun.setMinutes(nextInterval - 60);
+      } else {
+        nextRun.setMinutes(nextInterval);
+      }
+    } else if (minute !== "*" && hour === "*") {
+      // Specific minute every hour
+      const targetMinute = parseInt(minute);
+      nextRun.setMinutes(targetMinute, 0, 0);
+      if (istTime.getMinutes() >= targetMinute) {
+        nextRun.setHours(nextRun.getHours() + 1);
+      }
+    } else if (minute !== "*" && hour !== "*" && day === "*" && month === "*") {
+      // Daily at specific time
+      const targetHour = parseInt(hour);
+      const targetMinute = parseInt(minute);
+      nextRun.setHours(targetHour, targetMinute, 0, 0);
       if (istTime >= nextRun) {
         nextRun.setDate(nextRun.getDate() + 1);
       }
-      break;
-
-    case "0 0 * * 1": // Weekly on Monday
-      nextRun = new Date(istTime);
-      nextRun.setHours(0, 0, 0, 0);
-      const daysUntilMonday = (1 - nextRun.getDay() + 7) % 7;
-      nextRun.setDate(nextRun.getDate() + (daysUntilMonday || 7));
-      break;
-
-    case "0 0 1 * *": // Monthly on 1st
-      nextRun = new Date(istTime);
-      nextRun.setHours(0, 0, 0, 0);
-      nextRun.setDate(1);
-      nextRun.setMonth(nextRun.getMonth() + 1);
-      break;
-
-    default:
-      // Default to 1 hour for unknown patterns
-      nextRun = new Date(istTime);
+    } else {
+      // For complex expressions, use a simple fallback
+      // Add 1 hour as a safe default
       nextRun.setHours(nextRun.getHours() + 1);
-  }
+      nextRun.setMinutes(0, 0, 0);
+    }
 
-  // Convert IST time back to UTC for storage
-  // Since nextRun is in IST, subtract the IST offset to get UTC
-  return new Date(nextRun.getTime() - istOffset);
+    // Convert IST time back to UTC for storage
+    return new Date(nextRun.getTime() - istOffset);
+  } catch (error) {
+    console.error(
+      `Error calculating next run time for cron expression "${cronExpression}":`,
+      error.message
+    );
+
+    // Fallback: add 1 hour to current time if cron parsing fails
+    const fallbackTime = new Date(fromTime.getTime() + 60 * 60 * 1000);
+    console.warn(`Using fallback time: ${fallbackTime.toISOString()}`);
+    return fallbackTime;
+  }
 }
 
 /**

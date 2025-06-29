@@ -770,4 +770,74 @@ router.get(
   jobController.getJobExecutions.bind(jobController)
 );
 
+/**
+ * @swagger
+ * /jobs/validate-cron:
+ *   post:
+ *     summary: Validate cron expression
+ *     description: Validates a cron expression and returns next execution times
+ *     tags: [Jobs]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - cronExpression
+ *             properties:
+ *               cronExpression:
+ *                 type: string
+ *                 description: Cron expression to validate
+ *                 example: "* * * * *"
+ *     responses:
+ *       200:
+ *         description: Cron expression validation result
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     expression:
+ *                       type: string
+ *                       example: "* * * * *"
+ *                     isValid:
+ *                       type: boolean
+ *                       example: true
+ *                     nextRuns:
+ *                       type: array
+ *                       items:
+ *                         type: string
+ *                         format: date-time
+ *                       description: Next 5 execution times
+ *                     timezone:
+ *                       type: string
+ *                       example: "Asia/Kolkata (IST)"
+ *                     message:
+ *                       type: string
+ *                       example: "Valid cron expression"
+ *       400:
+ *         description: Invalid cron expression
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
+router.post(
+  "/validate-cron",
+  jobController.validateCronExpression.bind(jobController)
+);
+
 module.exports = router;

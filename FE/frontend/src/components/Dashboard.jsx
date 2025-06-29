@@ -1,9 +1,39 @@
 "use client";
 import { useJobStats } from "../hooks/useJobs";
-import { format } from "date-fns";
 
 const Dashboard = () => {
   const { stats, isLoading, isError, error } = useJobStats();
+
+  const formatDateTime = (dateString) => {
+    if (!dateString) return null;
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) {
+        return "Invalid date";
+      }
+      const formatter = new Intl.DateTimeFormat("en-US", {
+        timeZone: "Asia/Kolkata",
+        month: "short",
+        day: "2-digit",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hour12: false,
+      });
+      const parts = formatter.formatToParts(date);
+      const month = parts.find((part) => part.type === "month")?.value;
+      const day = parts.find((part) => part.type === "day")?.value;
+      const year = parts.find((part) => part.type === "year")?.value;
+      const hour = parts.find((part) => part.type === "hour")?.value;
+      const minute = parts.find((part) => part.type === "minute")?.value;
+      const second = parts.find((part) => part.type === "second")?.value;
+      return `${month} ${day}, ${year} ${hour}:${minute}:${second}`;
+    } catch (error) {
+      console.error("Date formatting error:", error);
+      return "Invalid date";
+    }
+  };
 
   if (isLoading) {
     return (
@@ -73,59 +103,100 @@ const Dashboard = () => {
     color = "blue",
     icon,
     trend,
-  }) => (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-all duration-200 overflow-hidden">
-      <div className="p-6">
-        <div className="flex items-start justify-between">
-          <div className="flex-1">
-            <div className="flex items-center space-x-3">
+  }) => {
+    // Define color mappings to avoid dynamic class generation issues
+    const backgroundClasses = {
+      blue: "bg-gradient-to-br from-blue-50 to-blue-100",
+      green: "bg-gradient-to-br from-green-50 to-green-100",
+      red: "bg-gradient-to-br from-red-50 to-red-100",
+      yellow: "bg-gradient-to-br from-yellow-50 to-yellow-100",
+      purple: "bg-gradient-to-br from-purple-50 to-purple-100",
+      indigo: "bg-gradient-to-br from-indigo-50 to-indigo-100",
+      emerald: "bg-gradient-to-br from-emerald-50 to-emerald-100",
+    };
+
+    const textClasses = {
+      blue: "text-blue-600",
+      green: "text-green-600",
+      red: "text-red-600",
+      yellow: "text-yellow-600",
+      purple: "text-purple-600",
+      indigo: "text-indigo-600",
+      emerald: "text-emerald-600",
+    };
+
+    return (
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-all duration-200 overflow-hidden">
+        <div className="p-6">
+          <div className="flex items-start justify-between">
+            <div className="flex-1">
+              <div className="flex items-center space-x-3">
+                <div
+                  className={`p-3 rounded-lg ${
+                    backgroundClasses[color] || backgroundClasses.blue
+                  }`}
+                >
+                  <div className={textClasses[color] || textClasses.blue}>
+                    {icon}
+                  </div>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-600 uppercase tracking-wide">
+                    {title}
+                  </p>
+                  <p className="text-2xl font-bold text-gray-900 mt-1">
+                    {value}
+                  </p>
+                  {subtitle && (
+                    <p className="text-sm text-gray-500 mt-1">{subtitle}</p>
+                  )}
+                </div>
+              </div>
+            </div>
+            {trend && (
               <div
-                className={`p-3 rounded-lg bg-gradient-to-br from-${color}-50 to-${color}-100`}
+                className={`flex items-center text-sm ${
+                  trend > 0 ? "text-green-600" : "text-red-600"
+                }`}
               >
-                <div className={`text-${color}-600`}>{icon}</div>
+                <svg
+                  className="w-4 h-4 mr-1"
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d={
+                      trend > 0
+                        ? "M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z"
+                        : "M14.707 10.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L9 12.586V5a1 1 0 012 0v7.586l2.293-2.293a1 1 0 011.414 0z"
+                    }
+                    clipRule="evenodd"
+                  />
+                </svg>
+                {Math.abs(trend)}%
               </div>
-              <div>
-                <p className="text-sm font-medium text-gray-600 uppercase tracking-wide">
-                  {title}
-                </p>
-                <p className="text-2xl font-bold text-gray-900 mt-1">{value}</p>
-                {subtitle && (
-                  <p className="text-sm text-gray-500 mt-1">{subtitle}</p>
-                )}
-              </div>
-            </div>
+            )}
           </div>
-          {trend && (
-            <div
-              className={`flex items-center text-sm ${
-                trend > 0 ? "text-green-600" : "text-red-600"
-              }`}
-            >
-              <svg
-                className="w-4 h-4 mr-1"
-                fill="currentColor"
-                viewBox="0 0 20 20"
-              >
-                <path
-                  fillRule="evenodd"
-                  d={
-                    trend > 0
-                      ? "M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z"
-                      : "M14.707 10.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L9 12.586V5a1 1 0 012 0v7.586l2.293-2.293a1 1 0 011.414 0z"
-                  }
-                  clipRule="evenodd"
-                />
-              </svg>
-              {Math.abs(trend)}%
-            </div>
-          )}
         </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   const ProgressBar = ({ label, value, max, color = "blue" }) => {
     const percentage = max > 0 ? (value / max) * 100 : 0;
+
+    // Define color mappings to avoid dynamic class generation issues
+    const colorClasses = {
+      blue: "bg-gradient-to-r from-blue-500 to-blue-600",
+      green: "bg-gradient-to-r from-green-500 to-green-600",
+      red: "bg-gradient-to-r from-red-500 to-red-600",
+      yellow: "bg-gradient-to-r from-yellow-500 to-yellow-600",
+      purple: "bg-gradient-to-r from-purple-500 to-purple-600",
+      indigo: "bg-gradient-to-r from-indigo-500 to-indigo-600",
+      emerald: "bg-gradient-to-r from-emerald-500 to-emerald-600",
+    };
+
     return (
       <div className="space-y-2">
         <div className="flex justify-between items-center">
@@ -136,7 +207,9 @@ const Dashboard = () => {
         </div>
         <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
           <div
-            className={`h-full bg-gradient-to-r from-${color}-500 to-${color}-600 rounded-full transition-all duration-500 ease-out`}
+            className={`h-full ${
+              colorClasses[color] || colorClasses.blue
+            } rounded-full transition-all duration-500 ease-out`}
             style={{ width: `${Math.min(100, percentage)}%` }}
           ></div>
         </div>
@@ -165,7 +238,7 @@ const Dashboard = () => {
             <span className="text-sm text-gray-600">Live Data</span>
           </div>
           <div className="text-sm text-gray-500 bg-white px-3 py-2 rounded-lg border">
-            Last updated: {format(new Date(), "MMM dd, yyyy HH:mm:ss")}
+            Last updated: {formatDateTime(new Date().toISOString())}
           </div>
         </div>
       </div>
@@ -201,17 +274,6 @@ const Dashboard = () => {
                   : "Scheduler is currently stopped - no jobs will execute"}
               </p>
             </div>
-          </div>
-          <div className="flex space-x-3">
-            <button
-              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                scheduler.isRunning
-                  ? "bg-yellow-100 hover:bg-yellow-200 text-yellow-800"
-                  : "bg-green-100 hover:bg-green-200 text-green-800"
-              }`}
-            >
-              {scheduler.isRunning ? "Stop Scheduler" : "Start Scheduler"}
-            </button>
           </div>
         </div>
       </div>

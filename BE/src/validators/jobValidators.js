@@ -1,8 +1,23 @@
 const Joi = require("joi");
+const cron = require("node-cron");
 
-// Cron expression validation (supports 5-field format: minute hour day month dayOfWeek)
-const cronPattern =
-  /^(\*|[0-5]?[0-9]|\*\/[0-9]+) (\*|[01]?[0-9]|2[0-3]|\*\/[0-9]+) (\*|[12]?[0-9]|3[01]|\*\/[0-9]+) (\*|[01]?[0-9]|1[0-2]|\*\/[0-9]+) (\*|[0-6]|\*\/[0-9]+)$/;
+// Custom cron expression validation using node-cron
+const validateCronExpression = (value, helpers) => {
+  try {
+    // Validate with node-cron
+    if (!cron.validate(value)) {
+      return helpers.message(
+        "Invalid cron expression format. Please use a valid 5-field cron expression (minute hour day month dayOfWeek)"
+      );
+    }
+
+    return value;
+  } catch (error) {
+    return helpers.message(
+      "Invalid cron expression format. Please use a valid 5-field cron expression (minute hour day month dayOfWeek)"
+    );
+  }
+};
 
 const jobCreateSchema = Joi.object({
   name: Joi.string().trim().min(1).max(255).required().messages({
@@ -14,10 +29,7 @@ const jobCreateSchema = Joi.object({
     "string.max": "Description must not exceed 1000 characters",
   }),
 
-  cronExpression: Joi.string().pattern(cronPattern).required().messages({
-    "string.pattern.base":
-      'Invalid cron expression format. Use: "minute hour day month dayOfWeek"',
-  }),
+  cronExpression: Joi.string().custom(validateCronExpression).required(),
 
   isActive: Joi.boolean().default(true).optional(),
 
@@ -88,10 +100,7 @@ const jobUpdateSchema = Joi.object({
     "string.max": "Description must not exceed 1000 characters",
   }),
 
-  cronExpression: Joi.string().pattern(cronPattern).optional().messages({
-    "string.pattern.base":
-      'Invalid cron expression format. Use: "minute hour day month dayOfWeek"',
-  }),
+  cronExpression: Joi.string().custom(validateCronExpression).optional(),
 
   isActive: Joi.boolean().optional(),
 

@@ -469,6 +469,84 @@ class JobController {
       }
     });
   }
+
+  /**
+   * POST /jobs/validate-cron - Validate cron expression
+   */
+  async validateCronExpression(req, res) {
+    try {
+      const { cronExpression } = req.body;
+
+      if (!cronExpression) {
+        return res.status(400).json({
+          success: false,
+          error: "Cron expression is required",
+          timestamp: new Date().toISOString(),
+        });
+      }
+
+      const cron = require("node-cron");
+
+      // Validate with node-cron
+      const isValidFormat = cron.validate(cronExpression);
+
+      if (!isValidFormat) {
+        return res.status(400).json({
+          success: false,
+          error: "Invalid cron expression format",
+          details: {
+            expression: cronExpression,
+            message:
+              "Please use a valid 5-field cron expression (minute hour day month dayOfWeek)",
+          },
+          timestamp: new Date().toISOString(),
+        });
+      }
+
+      // Calculate next run times using our custom function
+      try {
+        // Import the calculateNextRunTime function
+        const { calculateNextRunTime } = require("../models/Job");
+        const nextRuns = [];
+        let currentTime = new Date();
+
+        for (let i = 0; i < 5; i++) {
+          const nextRun = calculateNextRunTime(cronExpression, currentTime);
+          nextRuns.push(nextRun);
+          currentTime = new Date(nextRun.getTime() + 1000); // Add 1 second to get the next occurrence
+        }
+
+        return res.json({
+          success: true,
+          data: {
+            expression: cronExpression,
+            isValid: true,
+            nextRuns: nextRuns,
+            timezone: "Asia/Kolkata (IST)",
+            message: "Valid cron expression",
+          },
+          timestamp: new Date().toISOString(),
+        });
+      } catch (parseError) {
+        return res.status(400).json({
+          success: false,
+          error: "Invalid cron expression",
+          details: {
+            expression: cronExpression,
+            message: parseError.message,
+          },
+          timestamp: new Date().toISOString(),
+        });
+      }
+    } catch (error) {
+      console.error("Cron validation error:", error);
+      res.status(500).json({
+        success: false,
+        error: "Internal server error during cron validation",
+        timestamp: new Date().toISOString(),
+      });
+    }
+  }
 }
 
 module.exports = JobController;

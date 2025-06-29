@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useJob, useJobExecutions, useJobMutations } from "../hooks/useJobs";
-import { format } from "date-fns";
 import JobForm from "./JobForm";
 
 const JobDetail = () => {
@@ -128,6 +127,37 @@ const JobDetail = () => {
         {jobType}
       </span>
     );
+  };
+
+  const formatDateTime = (dateString) => {
+    if (!dateString) return null;
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) {
+        return "Invalid date";
+      }
+      const formatter = new Intl.DateTimeFormat("en-US", {
+        timeZone: "Asia/Kolkata",
+        month: "short",
+        day: "2-digit",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hour12: false,
+      });
+      const parts = formatter.formatToParts(date);
+      const month = parts.find((part) => part.type === "month")?.value;
+      const day = parts.find((part) => part.type === "day")?.value;
+      const year = parts.find((part) => part.type === "year")?.value;
+      const hour = parts.find((part) => part.type === "hour")?.value;
+      const minute = parts.find((part) => part.type === "minute")?.value;
+      const second = parts.find((part) => part.type === "second")?.value;
+      return `${month} ${day}, ${year} ${hour}:${minute}:${second}`;
+    } catch (error) {
+      console.error("Date formatting error:", error);
+      return "Invalid date";
+    }
   };
 
   return (
@@ -338,9 +368,7 @@ const JobDetail = () => {
                     Created At
                   </label>
                   <p className="text-sm bg-gray-50 px-3 py-2 rounded-lg border">
-                    {job.createdAt
-                      ? format(new Date(job.createdAt), "MMM dd, yyyy HH:mm")
-                      : "Unknown"}
+                    {job.createdAt ? formatDateTime(job.createdAt) : "Unknown"}
                   </p>
                 </div>
                 {job.lastRunAt && (
@@ -349,7 +377,7 @@ const JobDetail = () => {
                       Last Run
                     </label>
                     <p className="text-sm bg-gray-50 px-3 py-2 rounded-lg border">
-                      {format(new Date(job.lastRunAt), "MMM dd, yyyy HH:mm:ss")}
+                      {formatDateTime(job.lastRunAt)}
                     </p>
                   </div>
                 )}
@@ -359,7 +387,7 @@ const JobDetail = () => {
                       Next Run
                     </label>
                     <p className="text-sm bg-green-50 px-3 py-2 rounded-lg border border-green-200 text-green-800">
-                      {format(new Date(job.nextRunAt), "MMM dd, yyyy HH:mm:ss")}
+                      {formatDateTime(job.nextRunAt)}
                     </p>
                   </div>
                 )}
